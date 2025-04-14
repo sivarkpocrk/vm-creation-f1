@@ -1,0 +1,17 @@
+name: Destory VM Workflow
+
+on: [workflow_dispatch]
+
+jobs:
+  cleanup:
+    name: Cleanup Resources
+    runs-on: ubuntu-latest
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Delete Resource Group
+      run: |
+        az group delete --name chrome-vm-gh --yes --no-wait
