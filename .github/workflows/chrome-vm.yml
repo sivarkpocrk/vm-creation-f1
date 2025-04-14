@@ -38,16 +38,16 @@ jobs:
         az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 3389 --priority 1001
         az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 4000 --priority 1002
 
-  cleanup:
-    needs: deploy
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+#   cleanup:
+#     needs: deploy
+#     runs-on: ubuntu-latest
+#     if: always()
+#     steps:
+#     - name: Azure Login
+#       uses: azure/login@v1
+#       with:
+#         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Destroy VM
-      run: |
-        az group delete --name chrome-vm-gh --yes --no-wait
+#     - name: Destroy VM
+#       run: |
+#         az group delete --name chrome-vm-gh --yes --no-wait
