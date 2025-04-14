@@ -1,0 +1,63 @@
+trigger: none
+
+stages:
+- stage: Deploy
+  displayName: Deploy Ubuntu VM with Chrome and Remote Access
+  jobs:
+  - job: ProvisionVM
+    displayName: Provision Ubuntu VM
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - checkout: self
+
+    - task: AzureCLI@2
+      displayName: Create VM and Install Software
+      inputs:
+        azureSubscription: 'your-service-connection-name'  # <-- Set your Azure DevOps service connection name
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          RESOURCE_GROUP=ubuntu-browser-devops
+          VM_NAME=ubuntu-browser-vm
+          LOCATION=westeurope
+          ADMIN_USER=azureuser
+          ADMIN_PASS='YourPassword123!'
+
+          # Create resource group
+          az group create --name $RESOURCE_GROUP --location $LOCATION
+
+          # Create VM
+          az vm create \
+            --resource-group $RESOURCE_GROUP \
+            --name $VM_NAME \
+            --image UbuntuLTS \
+            --admin-username $ADMIN_USER \
+            --admin-password $ADMIN_PASS \
+            --size Standard_B2s \
+            --authentication-type password \
+            --custom-data install_desktop.sh \
+            --output none
+
+          # Open necessary ports
+          az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 3389 --priority 1001
+          az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 4000 --priority 1002
+
+- stage: Cleanup
+  displayName: Clean Up Resources
+  dependsOn: Deploy
+  condition: always()
+  jobs:
+  - job: DeleteResources
+    displayName: Delete Resource Group
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: AzureCLI@2
+      displayName: Delete Resource Group
+      inputs:
+        azureSubscription: 'your-service-connection-name'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az group delete --name ubuntu-browser-devops --yes --no-wait
