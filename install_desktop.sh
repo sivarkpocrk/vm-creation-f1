@@ -3,14 +3,14 @@
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install GUI and xRDP
+# Install XFCE and xRDP
 sudo apt install -y xfce4 xfce4-goodies xrdp
 echo xfce4-session > ~/.xsession
 sudo systemctl enable xrdp
 sudo systemctl restart xrdp
 sudo ufw allow 3389
 
-# Install Chrome
+# Install Google Chrome
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo apt install -y ./google-chrome-stable_current_amd64.deb
 
