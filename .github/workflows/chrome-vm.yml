@@ -1,4 +1,4 @@
-name: Deploy Chrome VM
+name: Deploy Ubuntu VM with Chrome
 
 on: [workflow_dispatch]
 
@@ -6,30 +6,48 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy VM with Terraform
-        run: |
-          cd terraform
-          terraform init
-          terraform apply -auto-approve
+    - name: Create VM and Install Software
+      run: |
+        RESOURCE_GROUP=chrome-vm-gh
+        VM_NAME=chrome-ubuntu-vm
+        LOCATION=westeurope
+        ADMIN_USER=azureuser
+        ADMIN_PASS='YourPassword123!'
 
-  destroy:
+        az group create --name $RESOURCE_GROUP --location $LOCATION
+
+        az vm create \
+          --resource-group $RESOURCE_GROUP \
+          --name $VM_NAME \
+          --image UbuntuLTS \
+          --admin-username $ADMIN_USER \
+          --admin-password $ADMIN_PASS \
+          --size Standard_B2s \
+          --authentication-type password \
+          --custom-data install_desktop.sh \
+          --output none
+
+        az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 3389 --priority 1001
+        az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 4000 --priority 1002
+
+  cleanup:
+    needs: deploy
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+    if: always()
     steps:
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Destroy VM
-        run: |
-          cd terraform
-          terraform destroy -auto-approve
+    - name: Destroy VM
+      run: |
+        az group delete --name chrome-vm-gh --yes --no-wait
