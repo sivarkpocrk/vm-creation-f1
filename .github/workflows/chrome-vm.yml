@@ -1,10 +1,28 @@
-name: Deploy Ubuntu VM with Chrome, xRDP, and NoMachine
+name: Deploy VM (Ubuntu or Windows)
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+    inputs:
+      create_linux:
+        description: "Create Linux VM"
+        required: true
+        default: "true"
+      create_windows:
+        description: "Create Windows VM"
+        required: true
+        default: "false"
+      resource_group_n:
+        description: "Azure Resource Group Name"
+        required: true
+        default: "chrome-vm-gh"
+      location_n:
+        description: "Azure Region"
+        required: true
+        default: "westeurope"
 
 jobs:
   deploy:
-    name: Deploy and Configure VM
+    name: Deploy Selected VM
     runs-on: ubuntu-latest
 
     steps:
@@ -16,18 +34,21 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Create Resource Group and VM
+    - name: Create Resource Group
       run: |
-        RESOURCE_GROUP=chrome-vm-gh
-        VM_NAME=chrome-ubuntu-vm
-        LOCATION=westeurope
-        ADMIN_USER=azureuser
-        ADMIN_PASS='YourPassword123!'
+        az group create --name ${{ vars.AZURE_RG }} --location ${{ vars.AZURE_LOCATION }}
 
-        # Create Resource Group
-        az group create --name $RESOURCE_GROUP --location $LOCATION
+    - name: Deploy Linux VM
+      if: ${{ github.event.inputs.create_linux == 'true' }}
+      run: |
+        RESOURCE_GROUP=${{ vars.AZURE_RG }}
+        LOCATION=${{ vars.AZURE_LOCATION }}
+        VM_NAME=${{ vars.VM_NAME }}
+        ADMIN_USER=${{ vars.VM_USER }}
+        ADMIN_PASS=${{ secrets.VM_PASS}}
 
-        # Create VM with Ubuntu 22.04 and run install script
+        echo "Deploying Linux VM..."
+
         az vm create \
           --resource-group $RESOURCE_GROUP \
           --name $VM_NAME \
@@ -37,26 +58,33 @@ jobs:
           --size Standard_B2s \
           --authentication-type password \
           --custom-data install_desktop.sh \
+          --location $LOCATION \
           --output none
 
-        # Open RDP and NoMachine ports
         az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 3389 --priority 1001
         az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 4000 --priority 1002
 
-    # Optional Cleanup
-    # You can comment this out during testing
-#   cleanup:
-#     name: Cleanup Resources
-#     needs: deploy
-#     runs-on: ubuntu-latest
-#     if: always()
+    - name: Deploy Windows VM
+      if: ${{ github.event.inputs.create_windows == 'true' }}
+      run: |
+        RESOURCE_GROUP=${{ vars.AZURE_RG }}
+        LOCATION=${{ vars.AZURE_LOCATION }}
+        VM_NAME=${{ vars.VM_NAME_W }}
+        ADMIN_USER=${{ vars.VM_USER }}
+        ADMIN_PASS=${{ secrets.VM_PASS}}
+        VM_SIZE=${{ vars.VM_SIZE_W }}
 
-#     steps:
-#     - name: Azure Login
-#       uses: azure/login@v1
-#       with:
-#         creds: ${{ secrets.AZURE_CREDENTIALS }}
+        echo "Deploying Windows VM..."
 
-#     - name: Delete Resource Group
-#       run: |
-#         az group delete --name chrome-vm-gh --yes --no-wait
+        az vm create \
+          --resource-group $RESOURCE_GROUP \
+          --name $VM_NAME \
+          --image MicrosoftWindowsServer:WindowsServer:2022-datacenter-g2:latest \
+          --admin-username $ADMIN_USER \
+          --admin-password $ADMIN_PASS \
+          --size $VM_SIZE \
+          --authentication-type password \
+          --location $LOCATION \
+          --output none
+
+        az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 3389 --priority 1001

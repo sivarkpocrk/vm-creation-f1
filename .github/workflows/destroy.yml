@@ -14,4 +14,6 @@ jobs:
 
     - name: Delete Resource Group
       run: |
-        az group delete --name chrome-vm-gh --yes --no-wait
+        RESOURCE_GROUP=${{ vars.AZURE_RG }}
+
+        az group delete --name $RESOURCE_GROUP --yes --no-wait
