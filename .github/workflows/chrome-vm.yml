@@ -34,57 +34,54 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    - name: Set Variables
+      run: |
+        echo "RESOURCE_GROUP=${{ github.event.inputs.resource_group_n }}" >> $GITHUB_ENV
+        echo "LOCATION=${{ github.event.inputs.location_n }}" >> $GITHUB_ENV
+        echo "VM_USER=azureuser" >> $GITHUB_ENV
+        echo "VM_PASS=${{ secrets.VM_PASS }}" >> $GITHUB_ENV
+        echo "LINUX_VM_NAME=linux-gh-vm" >> $GITHUB_ENV
+        echo "WINDOWS_VM_NAME=windows-gh-vm" >> $GITHUB_ENV
+        echo "WINDOWS_VM_SIZE=Standard_D4s_v3" >> $GITHUB_ENV
+
     - name: Create Resource Group
       run: |
-        az group create --name ${{ vars.AZURE_RG }} --location ${{ vars.AZURE_LOCATION }}
+        az group create --name $RESOURCE_GROUP --location $LOCATION
 
     - name: Deploy Linux VM
       if: ${{ github.event.inputs.create_linux == 'true' }}
       run: |
-        RESOURCE_GROUP=${{ vars.AZURE_RG }}
-        LOCATION=${{ vars.AZURE_LOCATION }}
-        VM_NAME=${{ vars.VM_NAME }}
-        ADMIN_USER=${{ vars.VM_USER }}
-        ADMIN_PASS=${{ secrets.VM_PASS}}
-
         echo "Deploying Linux VM..."
 
         az vm create \
           --resource-group $RESOURCE_GROUP \
-          --name $VM_NAME \
+          --name $LINUX_VM_NAME \
           --image Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest \
-          --admin-username $ADMIN_USER \
-          --admin-password $ADMIN_PASS \
+          --admin-username $VM_USER \
+          --admin-password "$VM_PASS" \
           --size Standard_B2s \
           --authentication-type password \
           --custom-data install_desktop.sh \
           --location $LOCATION \
           --output none
 
-        az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 3389 --priority 1001
-        az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 4000 --priority 1002
+        az vm open-port --resource-group $RESOURCE_GROUP --name $LINUX_VM_NAME --port 3389 --priority 1001
+        az vm open-port --resource-group $RESOURCE_GROUP --name $LINUX_VM_NAME --port 4000 --priority 1002
 
     - name: Deploy Windows VM
       if: ${{ github.event.inputs.create_windows == 'true' }}
       run: |
-        RESOURCE_GROUP=${{ vars.AZURE_RG }}
-        LOCATION=${{ vars.AZURE_LOCATION }}
-        VM_NAME=${{ vars.VM_NAME_W }}
-        ADMIN_USER=${{ vars.VM_USER }}
-        ADMIN_PASS=${{ secrets.VM_PASS}}
-        VM_SIZE=${{ vars.VM_SIZE_W }}
-
         echo "Deploying Windows VM..."
 
         az vm create \
           --resource-group $RESOURCE_GROUP \
-          --name $VM_NAME \
+          --name $WINDOWS_VM_NAME \
           --image MicrosoftWindowsServer:WindowsServer:2022-datacenter-g2:latest \
-          --admin-username $ADMIN_USER \
-          --admin-password $ADMIN_PASS \
-          --size $VM_SIZE \
+          --admin-username $VM_USER \
+          --admin-password "$VM_PASS" \
+          --size $WINDOWS_VM_SIZE \
           --authentication-type password \
           --location $LOCATION \
           --output none
 
-        az vm open-port --resource-group $RESOURCE_GROUP --name $VM_NAME --port 3389 --priority 1001
+        az vm open-port --resource-group $RESOURCE_GROUP --name $WINDOWS_VM_NAME --port 3389 --priority 1001
