@@ -18,7 +18,7 @@ on:
       location_n:
         description: "Azure Region"
         required: true
-        default: "westeurope"
+        default: "centralindia"
 
 jobs:
   deploy:
